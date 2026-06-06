@@ -1,0 +1,409 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  .dash {
+    background: linear-gradient(135deg, #f9d0e8 0%, #e8d5f5 25%, #d0e8f9 60%, #b8dff5 100%);
+    border-radius: var(--border-radius-lg);
+    overflow: hidden;
+    border: 0.5px solid rgba(180,160,210,0.3);
+    min-height: 520px;
+    font-family: var(--font-sans);
+  }
+
+  .header {
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(8px);
+    border-bottom: 0.5px solid rgba(180,160,210,0.25);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, #c084fc, #38bdf8);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; color: white;
+  }
+
+  .logo-text {
+    font-size: 14px; font-weight: 500; color: #2d1b4e;
+    letter-spacing: 0.04em;
+  }
+
+  .logo-sub {
+    font-size: 9px; color: #7c5fa0; letter-spacing: 0.07em;
+  }
+
+  .header-pills {
+    display: flex; gap: 8px; align-items: center;
+  }
+
+  .pill {
+    font-size: 11px; padding: 4px 12px;
+    border-radius: 20px;
+    border: 0.5px solid;
+    display: flex; align-items: center; gap: 5px;
+    cursor: pointer;
+  }
+
+  .pill.active {
+    background: rgba(192,132,252,0.15);
+    border-color: rgba(192,132,252,0.5);
+    color: #7c3aed;
+  }
+
+  .pill.info {
+    background: rgba(56,189,248,0.12);
+    border-color: rgba(56,189,248,0.4);
+    color: #0284c7;
+  }
+
+  .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink:0; }
+  .dot.green { background: #16a34a; }
+  .dot.pulse { background: #e11d48; animation: blink 1.2s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .main {
+    display: grid;
+    grid-template-columns: 200px 1fr 200px;
+    height: 360px;
+  }
+
+  .sidebar {
+    border-right: 0.5px solid rgba(180,160,210,0.2);
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 7px;
+    background: rgba(255,255,255,0.3);
+  }
+
+  .sidebar-label {
+    font-size: 9px; color: #7c5fa0; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 4px;
+  }
+
+  .module-card {
+    background: rgba(255,255,255,0.6);
+    border: 0.5px solid rgba(180,160,210,0.3);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer;
+  }
+
+  .module-card.on {
+    background: rgba(255,255,255,0.85);
+    border-color: rgba(192,132,252,0.5);
+  }
+
+  .mod-icon {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: rgba(192,132,252,0.1);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #7c3aed;
+    flex-shrink: 0;
+  }
+
+  .module-card.on .mod-icon {
+    background: rgba(192,132,252,0.18);
+    color: #6d28d9;
+  }
+
+  .mod-info { flex: 1; min-width: 0; }
+  .mod-name { font-size: 11px; color: #2d1b4e; font-weight: 500; }
+  .mod-status { font-size: 9px; color: #9ca3af; }
+  .mod-status.on { color: #16a34a; }
+
+  .center { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+  .camera-feed {
+    background: rgba(255,255,255,0.45);
+    border: 0.5px solid rgba(180,160,210,0.3);
+    border-radius: 10px;
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+    min-height: 200px;
+  }
+
+  .cam-overlay-tl, .cam-overlay-tr, .cam-overlay-bl, .cam-overlay-br {
+    position: absolute;
+    width: 16px; height: 16px;
+    border-color: rgba(124,58,237,0.5);
+    border-style: solid;
+  }
+  .cam-overlay-tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+  .cam-overlay-tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+  .cam-overlay-bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+  .cam-overlay-br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+
+  .cam-badge {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    font-size: 9px; padding: 3px 10px; border-radius: 20px;
+    background: rgba(225,29,72,0.1); border: 0.5px solid rgba(225,29,72,0.35);
+    color: #be123c; display: flex; align-items: center; gap: 4px;
+    white-space: nowrap;
+  }
+
+  .cam-center-text { font-size: 11px; color: #9ca3af; }
+
+  .voice-bar {
+    background: rgba(255,255,255,0.65);
+    border: 0.5px solid rgba(180,160,210,0.3);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .voice-mic {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(225,29,72,0.08);
+    border: 0.5px solid rgba(225,29,72,0.3);
+    display: flex; align-items: center; justify-content: center;
+    color: #e11d48; font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .voice-waves {
+    display: flex; gap: 2px; align-items: center; height: 20px;
+  }
+
+  .wave-bar {
+    width: 3px; border-radius: 2px;
+    background: rgba(124,58,237,0.4);
+    animation: wave 0.8s ease-in-out infinite;
+  }
+
+  .wave-bar:nth-child(1) { height: 6px; animation-delay: 0s; }
+  .wave-bar:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+  .wave-bar:nth-child(3) { height: 20px; animation-delay: 0.2s; }
+  .wave-bar:nth-child(4) { height: 12px; animation-delay: 0.3s; }
+  .wave-bar:nth-child(5) { height: 8px; animation-delay: 0.4s; }
+
+  @keyframes wave {
+    0%,100% { transform: scaleY(1); }
+    50% { transform: scaleY(0.4); }
+  }
+
+  .voice-text { font-size: 11px; color: #7c5fa0; }
+  .voice-text span { color: #7c3aed; font-weight: 500; }
+
+  .right-sidebar {
+    border-left: 0.5px solid rgba(180,160,210,0.2);
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 7px;
+    background: rgba(255,255,255,0.3);
+  }
+
+  .stat-row {
+    background: rgba(255,255,255,0.65);
+    border: 0.5px solid rgba(180,160,210,0.25);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+
+  .stat-label { font-size: 9px; color: #7c5fa0; letter-spacing: 0.06em; margin-bottom: 2px; }
+  .stat-value { font-size: 16px; font-weight: 500; color: #2d1b4e; }
+  .stat-sub { font-size: 9px; color: #16a34a; }
+  .stat-sub.muted { color: #9ca3af; }
+
+  .quick-actions {
+    margin-top: auto;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+
+  .action-btn {
+    font-size: 10px; padding: 6px 10px;
+    border-radius: 6px;
+    border: 0.5px solid rgba(180,160,210,0.3);
+    background: rgba(255,255,255,0.6);
+    color: #4a3570;
+    text-align: left;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .action-btn.danger {
+    border-color: rgba(225,29,72,0.3);
+    background: rgba(225,29,72,0.06);
+    color: #be123c;
+  }
+
+  .action-btn i { font-size: 12px; }
+
+  .bottom-bar {
+    border-top: 0.5px solid rgba(180,160,210,0.2);
+    padding: 10px 20px;
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.45);
+  }
+
+  .ai-input {
+    flex: 1; background: rgba(255,255,255,0.75);
+    border: 0.5px solid rgba(180,160,210,0.35);
+    border-radius: 8px;
+    padding: 7px 12px;
+    font-size: 12px; color: #7c5fa0;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .ai-prefix {
+    color: #7c3aed; font-weight: 500; font-size: 12px;
+    background: rgba(192,132,252,0.12);
+    padding: 2px 7px; border-radius: 4px;
+  }
+
+  .mem-badge {
+    font-size: 9px; padding: 5px 10px; border-radius: 20px;
+    background: rgba(56,189,248,0.1);
+    border: 0.5px solid rgba(56,189,248,0.3);
+    color: #0284c7;
+    display: flex; align-items: center; gap: 4px;
+    white-space: nowrap;
+  }
+</style>
+
+<div class="dash" role="img" aria-label="Symbio Tech light mode redesigned dashboard">
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon"><i class="ti ti-eye" aria-hidden="true"></i></div>
+      <div>
+        <div class="logo-text">SYMBIO TECH</div>
+        <div class="logo-sub">AI-DRIVEN ASSISTIVE SUITE · VISION + GLOVE</div>
+      </div>
+    </div>
+    <div class="header-pills">
+      <div class="pill info"><div class="dot green"></div> Telemetry live</div>
+      <div class="pill active"><div class="dot pulse"></div> Voice active</div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <div class="sidebar">
+      <div class="sidebar-label">System modules</div>
+
+      <div class="module-card on">
+        <div class="mod-icon"><i class="ti ti-scan" aria-hidden="true"></i></div>
+        <div class="mod-info">
+          <div class="mod-name">Text reader</div>
+          <div class="mod-status on">● Active</div>
+        </div>
+      </div>
+
+      <div class="module-card on">
+        <div class="mod-icon"><i class="ti ti-map-pin" aria-hidden="true"></i></div>
+        <div class="mod-info">
+          <div class="mod-name">Navigator</div>
+          <div class="mod-status on">● Active</div>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="mod-icon"><i class="ti ti-box" aria-hidden="true"></i></div>
+        <div class="mod-info">
+          <div class="mod-name">Object HUD</div>
+          <div class="mod-status">Standby</div>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="mod-icon"><i class="ti ti-topology-star" aria-hidden="true"></i></div>
+        <div class="mod-info">
+          <div class="mod-name">Scene desc.</div>
+          <div class="mod-status">Standby</div>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="mod-icon"><i class="ti ti-hand-stop" aria-hidden="true"></i></div>
+        <div class="mod-info">
+          <div class="mod-name">Glove sign</div>
+          <div class="mod-status">Standby</div>
+        </div>
+      </div>
+
+      <div class="module-card">
+        <div class="mod-icon"><i class="ti ti-currency-dollar" aria-hidden="true"></i></div>
+        <div class="mod-info">
+          <div class="mod-name">Money ID</div>
+          <div class="mod-status">Standby</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="center">
+      <div class="camera-feed">
+        <div class="cam-overlay-tl"></div>
+        <div class="cam-overlay-tr"></div>
+        <div class="cam-overlay-bl"></div>
+        <div class="cam-overlay-br"></div>
+        <div class="cam-badge"><div class="dot pulse"></div> LIVE · No signal</div>
+        <div class="cam-center-text">Point camera to activate vision feed</div>
+      </div>
+
+      <div class="voice-bar">
+        <div class="voice-mic"><i class="ti ti-microphone" aria-hidden="true"></i></div>
+        <div class="voice-waves">
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+          <div class="wave-bar"></div>
+        </div>
+        <div class="voice-text">Acoustic voice core — <span>listening…</span> speak a command</div>
+      </div>
+    </div>
+
+    <div class="right-sidebar">
+      <div class="sidebar-label">Telemetry</div>
+
+      <div class="stat-row">
+        <div class="stat-label">HEALTH VITALS</div>
+        <div class="stat-value">—</div>
+        <div class="stat-sub muted">Awaiting sensor</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-label">ENV MEMORY</div>
+        <div class="stat-value">0</div>
+        <div class="stat-sub muted">Checkpoints logged</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-label">SESSION UPTIME</div>
+        <div class="stat-value">00:00</div>
+        <div class="stat-sub">Running</div>
+      </div>
+
+      <div class="quick-actions">
+        <div class="sidebar-label" style="margin-top:4px">Quick actions</div>
+        <div class="action-btn"><i class="ti ti-address-book" aria-hidden="true"></i> Contact registry</div>
+        <div class="action-btn"><i class="ti ti-star" aria-hidden="true"></i> Rate service</div>
+        <div class="action-btn danger"><i class="ti ti-alert-triangle" aria-hidden="true"></i> SOS trigger</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="bottom-bar">
+    <div class="ai-input">
+      <span class="ai-prefix">AI</span>
+      <span>Say "Ask AI [question]" or type here…</span>
+    </div>
+    <div class="mem-badge"><i class="ti ti-brain" aria-hidden="true" style="font-size:11px"></i> Memory: empty</div>
+  </div>
+
+</div>
