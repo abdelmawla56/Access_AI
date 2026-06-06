@@ -1,17 +1,24 @@
 const multer = require("multer");
 
-// Store frames in memory (no disk I/O for real-time performance)
+// Explicit MIME type whitelist — no arbitrary uploads
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+// Keep frames in memory (no disk I/O for real-time performance)
 const storage = multer.memoryStorage();
+
+const fileFilter = (_req, file, cb) => {
+  if (ALLOWED_TYPES.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type. Only JPEG, PNG, and WebP images are allowed."), false);
+  }
+};
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) {
-      cb(null, true);
-    } else {
-      cb(new Error("Only image files are allowed"), false);
-    }
+  fileFilter,
+  limits: {
+    fileSize: parseInt(process.env.MAX_FILE_SIZE_MB || "5") * 1024 * 1024,
   },
 });
 

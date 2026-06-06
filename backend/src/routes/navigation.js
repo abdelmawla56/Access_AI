@@ -113,6 +113,17 @@ router.post("/guide", upload.single("frame"), async (req, res) => {
       fps: response.data.fps || null,
     };
 
+    // Persist to scan history in SQLite
+    try {
+      const { insertScan } = require("../db");
+      const avgConf = obstacles.length > 0
+        ? Number((obstacles.reduce((sum, o) => sum + o.confidence, 0) / obstacles.length).toFixed(4))
+        : 0;
+      insertScan.run("navigation", hint, avgConf, processingMs);
+    } catch (dbErr) {
+      console.error("[DB] Failed to insert navigation scan history:", dbErr.message);
+    }
+
     appState.lastResult = { feature: "navigation", ...result };
     appState.isProcessing = false;
     broadcastState(appState);

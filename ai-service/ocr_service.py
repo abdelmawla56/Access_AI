@@ -1,58 +1,100 @@
 """
 OCR Service — Tesseract via pytesseract
-Returns extracted text + per-word confidence scores.
+Refactored into OCRService class with:
+  - Arabic + English support (configurable via OCR_LANGUAGES env var)
+  - Advanced image preprocessing (denoising + adaptive thresholding)
+  - Class-based design for easy pre-loading at startup
 """
 
+import os
+import io
 import pytesseract
 from PIL import Image, ImageFilter, ImageEnhance
 import numpy as np
-
-# ── If Tesseract is not on PATH, set the executable path here ──────────────────
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+import cv2
 
 
-def preprocess_image(image: Image.Image) -> Image.Image:
+class OCRService:
     """
-    Enhance image for better OCR accuracy:
-    - Convert to grayscale
-    - Sharpen edges
-    - Increase contrast
+    Encapsulates Tesseract OCR with pre-loaded config and preprocessing.
+    Initialize once at startup, call read() for each request.
     """
-    gray = image.convert("L")
-    sharpened = gray.filter(ImageFilter.SHARPEN)
-    enhanced = ImageEnhance.Contrast(sharpened).enhance(2.0)
-    return enhanced
 
+    def __init__(self):
+        # Allow overriding Tesseract binary path via env (Docker / Linux)
+        tesseract_cmd = os.getenv("TESSERACT_CMD", "")
+        if tesseract_cmd:
+            pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
+        else:
+            # Windows default path fallback
+            win_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+            if os.path.exists(win_path):
+                pytesseract.pytesseract.tesseract_cmd = win_path
 
-def run_ocr(image: Image.Image) -> dict:
-    """
-    Run Tesseract OCR on a PIL image.
-    Returns:
-        text        — full extracted text
-        confidence  — average word confidence (0-100)
-        words       — list of {word, confidence, bbox}
-    """
-    processed = preprocess_image(image)
+        self.default_lang = os.getenv("OCR_LANGUAGES", "eng+ara")
+        print(f"[OCRService] Initialized. Default lang: {self.default_lang}")
 
-    # Full text extraction
-    raw_text: str = pytesseract.image_to_string(processed, lang="eng").strip()
+    def preprocess(self, image: Image.Image) -> Image.Image:
+        """
+        Advanced preprocessing pipeline for better OCR accuracy:
+          1. Convert to RGB then grayscale via OpenCV
+          2. Fast non-local means denoising
+          3. Adaptive Gaussian thresholding for varying lighting
+        Falls back to simple PIL-based sharpening if cv2 fails.
+        """
+        try:
+            img_array = np.array(image.convert("RGB"))
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+            denoised = cv2.fastNlMeansDenoising(gray, h=10)
+            thresh = cv2.adaptiveThreshold(
+                denoised, 255,
+                cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                cv2.THRESH_BINARY,
+                11, 2
+            )
+            return Image.fromarray(thresh)
+        except Exception:
+            # Graceful fallback: simple PIL pipeline
+            gray = image.convert("L")
+            sharpened = gray.filter(ImageFilter.SHARPEN)
+            return ImageEnhance.Contrast(sharpened).enhance(2.0)
 
-    # Detailed word-level data (for confidence scores)
-    data = pytesseract.image_to_data(
-        processed,
-        lang="eng",
-        output_type=pytesseract.Output.DICT,
-    )
+    def read(self, image_bytes: bytes, lang: str = None) -> dict:
+        """
+        Run Tesseract OCR on raw image bytes.
+        
+        Args:
+            image_bytes: Raw image data (JPEG / PNG / WebP)
+            lang: Tesseract language string, e.g. "eng", "ara", "eng+ara"
+        
+        Returns:
+            {text, confidence, language, word_count, words}
+        """
+        effective_lang = lang or self.default_lang
 
-    words = []
-    confidences = []
-    n = len(data["text"])
-    for i in range(n):
-        word = data["text"][i].strip()
-        conf = int(data["conf"][i])
-        if word and conf > 0:
-            words.append(
-                {
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        processed = self.preprocess(image)
+
+        # Full text extraction
+        raw_text: str = pytesseract.image_to_string(
+            processed, lang=effective_lang
+        ).strip()
+
+        # Detailed word-level data for confidence scores
+        data = pytesseract.image_to_data(
+            processed,
+            lang=effective_lang,
+            output_type=pytesseract.Output.DICT,
+        )
+
+        words = []
+        confidences = []
+        n = len(data["text"])
+        for i in range(n):
+            word = data["text"][i].strip()
+            conf = int(data["conf"][i])
+            if word and conf > 0:
+                words.append({
                     "word": word,
                     "confidence": conf,
                     "bbox": {
@@ -61,14 +103,33 @@ def run_ocr(image: Image.Image) -> dict:
                         "w": data["width"][i],
                         "h": data["height"][i],
                     },
-                }
-            )
-            confidences.append(conf)
+                })
+                confidences.append(conf)
 
-    avg_confidence = float(np.mean(confidences)) if confidences else 0.0
+        avg_confidence = float(np.mean(confidences)) if confidences else 0.0
 
-    return {
-        "text": raw_text,
-        "confidence": round(avg_confidence, 1),
-        "words": words,
-    }
+        return {
+            "text": raw_text,
+            "confidence": round(avg_confidence, 1),
+            "language": effective_lang,
+            "word_count": len(raw_text.split()) if raw_text else 0,
+            "words": words,
+        }
+
+
+# ─── Backward-compatible module-level function ────────────────────────────────
+_default_service: OCRService = None
+
+
+def _get_service() -> OCRService:
+    global _default_service
+    if _default_service is None:
+        _default_service = OCRService()
+    return _default_service
+
+
+def run_ocr(image: Image.Image) -> dict:
+    """Legacy function for backward compatibility with scene_service.py"""
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+    return _get_service().read(buf.getvalue())

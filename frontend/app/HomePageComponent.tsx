@@ -36,6 +36,8 @@ import EnvMemoryPanel from "@/components/EnvMemoryPanel";
 import SmartSuggestionsBar from "@/components/SmartSuggestionsBar";
 import EmergencyContactsModal from "@/components/EmergencyContactsModal";
 import GloveHistoryPanel from "@/components/GloveHistoryPanel";
+import HistoryPanel from "@/components/HistoryPanel";
+import SettingsPanel from "@/components/SettingsPanel";
 
 interface Contact {
   name: string;
@@ -193,6 +195,8 @@ export default function HomePage() {
 
   // Voice-only / Hands-free Mode UI state
   const [voiceOnlyMode, setVoiceOnlyMode] = useState(false);
+const [isSettingsOpen, setSettingsOpen] = useState(false);
+const [isHistoryOpen, setHistoryOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ type: string; payload?: any } | null>(null);
 
   // Refs
@@ -201,10 +205,24 @@ export default function HomePage() {
   const emergencyIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
-  const { speak, cancel } = useTTS(1.05, 1.0);
+  // Settings hook
+  const { settings, updateSetting, resetSettings } = useSettings();
+
+  // Camera hook
+  const { speak, cancel } = useTTS(settings.ttsSpeed, 1.0);
   const { videoRef, isReady: cameraReady, error: cameraError, startCamera, captureFrame } = useCamera({
-    facingMode: "environment",
+    facingMode: settings.cameraFacing,
   });
+
+  // Keyboard shortcuts effect
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "h") setHistoryOpen(true);
+      if (e.key === "s") setSettingsOpen(true);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   // Load state from Storage on mount
   useEffect(() => {
@@ -839,6 +857,16 @@ export default function HomePage() {
   }, [isListening, startListening, stopListening, speak]);
 
   const handleFooterContactSubmit = useCallback((e: React.FormEvent) => {
+  // existing contact submit logic remains unchanged
+},
+
+// Replay handler for history panel
+const handleReplay = useCallback((text: string) => {
+  if (text) {
+    speak(text, "assertive");
+    setLastSpoken(text);
+  }
+}, [speak]);
     e.preventDefault();
     const emailEl = document.getElementById("footer-email") as HTMLInputElement;
     const messageEl = document.getElementById("footer-message") as HTMLTextAreaElement;
@@ -895,6 +923,50 @@ export default function HomePage() {
     startCamera();
   }, [startCamera]);
 
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target.isContentEditable ||
+        target.tagName === "SELECT"
+      ) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+
+      if (e.code === "Space" || key === " ") {
+        e.preventDefault();
+        toggleMic();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        triggerCapture();
+      } else if (key === "1") {
+        e.preventDefault();
+        switchFeature("ocr");
+      } else if (key === "2") {
+        e.preventDefault();
+        switchFeature("detection");
+      } else if (key === "3") {
+        e.preventDefault();
+        switchFeature("navigation");
+      } else if (key === "r") {
+        e.preventDefault();
+        if (lastSpoken) {
+          speak(lastSpoken, "assertive");
+        } else {
+          speak("Nothing to repeat.", "assertive");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleMic, triggerCapture, switchFeature, lastSpoken, speak]);
+
   // ── Announce app on load ──────────────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -920,6 +992,13 @@ export default function HomePage() {
           animation: wave 0.8s ease-in-out infinite;
         }
       `}</style>
+
+      {/* Voice-Unsupported Banner */}
+      {!isSupported && (
+        <div className="w-full max-w-7xl mx-auto mb-2 bg-amber-500/20 border border-amber-500/40 rounded-2xl px-4 py-3 text-center text-xs text-amber-950 font-bold z-50 flex items-center justify-center gap-2 shadow-sm">
+          <span>⚠️</span> Voice control is offline. Your browser does not support the Web Speech API. We recommend Google Chrome.
+        </div>
+      )}
 
       {/* Background Atmosphere */}
       <div className="absolute top-[-10%] left-[-5%] w-[70vw] h-[70vw] bg-[#bae6fd]/30 blur-[150px] rounded-full animate-orb-drift pointer-events-none"></div>
@@ -1223,7 +1302,20 @@ export default function HomePage() {
         timer={emergencyTimer}
         onCancel={cancelEmergency}
         gpsCoords={gpsCoords}
-        contacts={emergencyContacts}
+        contacts={emergencyContacts} />
+        {/* Settings Panel */}
+        <SettingsPanel
+          isOpen={isSettingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          settings={settings}
+          onSettingChange={updateSetting}
+        />
+        {/* History Panel */}
+        <HistoryPanel
+          isOpen={isHistoryOpen}
+          onClose={() => setHistoryOpen(false)}
+          onReplay={handleReplay}
+        />
       />
 
       <EmergencyContactsModal

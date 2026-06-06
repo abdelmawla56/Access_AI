@@ -3,33 +3,67 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const expressWs = require("express-ws");
+const rateLimit = require("express-rate-limit");
 
-const ocrRouter = require("./routes/ocr");
-const detectionRouter = require("./routes/detection");
+// ─── Route imports ────────────────────────────────────────────────────────────
+const { createAIProxyRoute } = require("./routes/ai-proxy");
 const navigationRouter = require("./routes/navigation");
 const statusRouter = require("./routes/status");
 const feedbackRouter = require("./routes/feedback");
 const assistantRouter = require("./routes/assistant");
 const sceneRouter = require("./routes/scene");
 const searchRouter = require("./routes/search");
+const historyRouter = require("./routes/history");
+const currencyRouter = require("./routes/currency");
 
 const app = express();
 expressWs(app); // Attach WebSocket support
 
-// ─── Middleware ────────────────────────────────────────────────────────────────
-app.use(cors({ origin: "*" }));
+// ─── Rate Limiters ────────────────────────────────────────────────────────────
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." },
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many AI requests, slow down." },
+});
+
+app.use(globalLimiter);
+
+// ─── CORS — locked to known origins ───────────────────────────────────────────
+const allowedOrigins = [
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow requests with no origin (e.g. curl, Postman, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origin '${origin}' not allowed`));
+  },
+  credentials: true,
+}));
+
 app.use(morgan("dev"));
-app.use(express.json({ limit: "20mb" }));
-app.use(express.urlencoded({ extended: true, limit: "20mb" }));
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
 // ─── Shared State ─────────────────────────────────────────────────────────────
-// Tracks which feature is currently active across all routes
 const appState = {
-  activeFeature: "none", // "ocr" | "detection" | "navigation" | "none" | "health" | "emergency" | "about" | "rating"
+  activeFeature: "none",
   isProcessing: false,
   lastResult: null,
   debugMode: false,
-  clients: new Set(), // WebSocket clients
+  clients: new Set(),
   healthData: {
     heartRate: 72,
     temperature: 36.8,
@@ -40,12 +74,12 @@ const appState = {
 };
 app.locals.appState = appState;
 
-// Periodic health data fluctuation mock (simulates live glove input updates)
+// Periodic health data fluctuation mock
 setInterval(() => {
   if (appState.healthData) {
-    appState.healthData.heartRate = Math.floor(70 + Math.random() * 8); // fluctuates between 70-77
-    appState.healthData.temperature = parseFloat((36.5 + Math.random() * 0.5).toFixed(1)); // 36.5 - 37.0
-    appState.healthData.spO2 = Math.floor(97 + Math.random() * 3); // 97 - 99
+    appState.healthData.heartRate = Math.floor(70 + Math.random() * 8);
+    appState.healthData.temperature = parseFloat((36.5 + Math.random() * 0.5).toFixed(1));
+    appState.healthData.spO2 = Math.floor(97 + Math.random() * 3);
     appState.healthData.lastUpdated = new Date().toISOString();
   }
 }, 5000);
@@ -62,7 +96,6 @@ function handleGloveChar(char) {
 
   const cleanChar = char.trim();
   if (char === " " || cleanChar === "") {
-    // Space or pause
     if (gloveBuffer.length > 0) {
       broadcast(appState, { type: "GLOVE_WORD", payload: { word: gloveBuffer } });
       gloveBuffer = "";
@@ -70,8 +103,7 @@ function handleGloveChar(char) {
   } else {
     gloveBuffer += cleanChar;
     broadcast(appState, { type: "GLOVE_CHAR", payload: { char: cleanChar, buffer: gloveBuffer } });
-    
-    // 3 seconds pause detection
+
     gloveTimeout = setTimeout(() => {
       if (gloveBuffer.length > 0) {
         broadcast(appState, { type: "GLOVE_WORD", payload: { word: gloveBuffer } });
@@ -81,12 +113,11 @@ function handleGloveChar(char) {
   }
 }
 
-// ─── WebSocket – live state push ────────────────────────────────────────────
+// ─── WebSocket – live state push ─────────────────────────────────────────────
 app.ws("/ws", (ws) => {
   console.log("[WS] Client connected");
   appState.clients.add(ws);
 
-  // Send current state immediately on connect
   ws.send(JSON.stringify({ type: "STATE", payload: getPublicState(appState) }));
 
   ws.on("message", (msg) => {
@@ -113,15 +144,18 @@ app.ws("/ws", (ws) => {
   });
 });
 
-// ─── REST Routes ───────────────────────────────────────────────────────────────
-app.use("/api/ocr", ocrRouter);
-app.use("/api/detection", detectionRouter);
-app.use("/api/navigation", navigationRouter);
+// ─── REST Routes ─────────────────────────────────────────────────────────────
+// AI proxy routes — use factory + strict rate limiter
+app.use("/api/ocr", aiLimiter, createAIProxyRoute("/ocr", "ocr"));
+app.use("/api/detection", aiLimiter, createAIProxyRoute("/detect", "detection"));
+app.use("/api/navigation", aiLimiter, navigationRouter);
+app.use("/api/scene", aiLimiter, sceneRouter);
+app.use("/api/search", aiLimiter, searchRouter);
+app.use("/api/currency", aiLimiter, currencyRouter);
 app.use("/api/status", statusRouter);
 app.use("/api/feedback", feedbackRouter);
 app.use("/api/assistant", assistantRouter);
-app.use("/api/scene", sceneRouter);
-app.use("/api/search", searchRouter);
+app.use("/api/history", historyRouter);
 
 // Health check
 app.get("/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
@@ -129,17 +163,19 @@ app.get("/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
 // Global error handler
 app.use((err, _req, res, _next) => {
   console.error("[ERROR]", err.message);
-  res.status(500).json({ error: err.message || "Internal server error" });
+  const status = err.message.includes("CORS") ? 403 :
+                 err.message.includes("file type") ? 415 : 500;
+  res.status(status).json({ error: err.message || "Internal server error" });
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// ─── Start ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`\n🚀 Backend running on http://localhost:${PORT}`);
-  console.log(`🤖 AI Service expected at ${process.env.AI_SERVICE_URL}\n`);
+  console.log(`🤖 AI Service expected at ${process.env.AI_SERVICE_URL || "http://localhost:8000"}\n`);
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 function getPublicState(state) {
   return {
     activeFeature: state.activeFeature,

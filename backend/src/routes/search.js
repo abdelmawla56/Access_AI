@@ -53,6 +53,17 @@ router.post("/scan", upload.single("frame"), async (req, res) => {
       processingMs,
     };
 
+    // Persist to scan history in SQLite
+    try {
+      const { insertScan } = require("../db");
+      const maxConf = matches.length > 0
+        ? Number(Math.max(...matches.map(m => m.confidence)).toFixed(4))
+        : 0;
+      insertScan.run("search", hint, maxConf, processingMs);
+    } catch (dbErr) {
+      console.error("[DB] Failed to insert search scan history:", dbErr.message);
+    }
+
     appState.lastResult = { feature: "search", ...result };
     appState.isProcessing = false;
     broadcastState(appState);

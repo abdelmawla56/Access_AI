@@ -66,16 +66,16 @@ export function useCamera({
       }
       const canvas = canvasRef.current;
       const video = videoRef.current;
-      canvas.width = video.videoWidth || width;
-      canvas.height = video.videoHeight || height;
+      canvas.width = 640;
+      canvas.height = 640;
 
       const ctx = canvas.getContext("2d");
       if (!ctx) return resolve(null);
 
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, 640, 640);
       canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
     });
-  }, [isReady, width, height]);
+  }, [isReady]);
 
   useEffect(() => {
     return () => stopCamera();

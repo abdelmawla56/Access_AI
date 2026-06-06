@@ -1,12 +1,43 @@
 # Python
 __pycache__/
 *.pyc
+*.pyo
+ai-service/__pycache__/
+ai-service/.venv/
+ai-service/venv/
+ai-service/*.egg-info/
 
 # AI Service venv
 ai-service/venv/
 
 # Node
 node_modules/
+.next/
 
 # Environment variables
 .env
+!.env.example
+
+# Databases
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# ML Models (download on first run or via Dockerfile)
+*.pt
+*.onnx
+
+# Uploads temp dir
+/tmp/accessai-uploads/
+
+# Build artifacts
+dist/
+build/
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json

@@ -6,9 +6,28 @@ const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
 export type Feature = "ocr" | "detection" | "navigation" | "currency" | "scene" | "search" | "assistant" | "emergency" | "glove" | "none";
 
+// ─── Fetch with Timeout Wrapper ──────────────────────────────────────────────
+async function fetchWithTimeout(resource: RequestInfo | URL, options: RequestInit = {}): Promise<Response> {
+  const timeout = 12000; // 12 seconds timeout limit
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+}
+
 // ─── Feature switching ────────────────────────────────────────────────────────
 export async function setActiveFeature(feature: Feature) {
-  const res = await fetch(`${BASE}/api/status/feature`, {
+  const res = await fetchWithTimeout(`${BASE}/api/status/feature`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ feature }),
@@ -18,13 +37,13 @@ export async function setActiveFeature(feature: Feature) {
 }
 
 export async function getStatus() {
-  const res = await fetch(`${BASE}/api/status`);
+  const res = await fetchWithTimeout(`${BASE}/api/status`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function setDebugMode(debug: boolean) {
-  const res = await fetch(`${BASE}/api/status/debug`, {
+  const res = await fetchWithTimeout(`${BASE}/api/status/debug`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ debug }),
@@ -37,7 +56,7 @@ export async function setDebugMode(debug: boolean) {
 export async function scanOCR(frame: Blob) {
   const form = new FormData();
   form.append("frame", frame, "frame.jpg");
-  const res = await fetch(`${BASE}/api/ocr/scan`, { method: "POST", body: form });
+  const res = await fetchWithTimeout(`${BASE}/api/ocr/scan`, { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "OCR failed" }));
     throw new Error(err.error || "OCR failed");
@@ -55,7 +74,7 @@ export async function scanOCR(frame: Blob) {
 export async function scanCurrency(frame: Blob) {
   const form = new FormData();
   form.append("frame", frame, "frame.jpg");
-  const res = await fetch(`${BASE}/api/currency/scan`, { method: "POST", body: form });
+  const res = await fetchWithTimeout(`${BASE}/api/currency/scan`, { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Currency scan failed" }));
     throw new Error(err.error || "Currency scan failed");
@@ -78,7 +97,7 @@ export interface Detection {
 export async function analyzeDetection(frame: Blob) {
   const form = new FormData();
   form.append("frame", frame, "frame.jpg");
-  const res = await fetch(`${BASE}/api/detection/analyze`, { method: "POST", body: form });
+  const res = await fetchWithTimeout(`${BASE}/api/detection/analyze`, { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Detection failed" }));
     throw new Error(err.error || "Detection failed");
@@ -105,7 +124,7 @@ export interface Obstacle {
 export async function guideNavigation(frame: Blob) {
   const form = new FormData();
   form.append("frame", frame, "frame.jpg");
-  const res = await fetch(`${BASE}/api/navigation/guide`, { method: "POST", body: form });
+  const res = await fetchWithTimeout(`${BASE}/api/navigation/guide`, { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Navigation failed" }));
     throw new Error(err.error || "Navigation failed");
@@ -135,7 +154,7 @@ export interface SceneResult {
 export async function describeScene(frame: Blob) {
   const form = new FormData();
   form.append("frame", frame, "frame.jpg");
-  const res = await fetch(`${BASE}/api/scene/describe`, { method: "POST", body: form });
+  const res = await fetchWithTimeout(`${BASE}/api/scene/describe`, { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Scene description failed" }));
     throw new Error(err.error || "Scene description failed");
@@ -159,7 +178,7 @@ export async function searchForObject(frame: Blob, target: string) {
   const form = new FormData();
   form.append("frame", frame, "frame.jpg");
   form.append("target", target);
-  const res = await fetch(`${BASE}/api/search/scan`, { method: "POST", body: form });
+  const res = await fetchWithTimeout(`${BASE}/api/search/scan`, { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Object search failed" }));
     throw new Error(err.error || "Object search failed");
@@ -175,7 +194,7 @@ export interface AssistantResult {
 }
 
 export async function chatWithAssistant(message: string, context?: string) {
-  const res = await fetch(`${BASE}/api/assistant/chat`, {
+  const res = await fetchWithTimeout(`${BASE}/api/assistant/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ message, context }),
@@ -188,7 +207,7 @@ export async function chatWithAssistant(message: string, context?: string) {
 }
 
 export async function clearAssistantHistory() {
-  const res = await fetch(`${BASE}/api/assistant/history`, { method: "DELETE" });
+  const res = await fetchWithTimeout(`${BASE}/api/assistant/history`, { method: "DELETE" });
   if (!res.ok) throw new Error(await res.text());
   return res.json() as Promise<{ ok: boolean; message: string }>;
 }

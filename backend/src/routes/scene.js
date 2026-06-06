@@ -46,6 +46,17 @@ router.post("/describe", upload.single("frame"), async (req, res) => {
       processingMs,
     };
 
+    // Persist to scan history in SQLite
+    try {
+      const { insertScan } = require("../db");
+      const avgConf = detections.length > 0
+        ? Number((detections.reduce((sum, d) => sum + d.confidence, 0) / detections.length).toFixed(4))
+        : null;
+      insertScan.run("scene", description, avgConf, processingMs);
+    } catch (dbErr) {
+      console.error("[DB] Failed to insert scene scan history:", dbErr.message);
+    }
+
     appState.lastResult = { feature: "scene", ...result };
     appState.isProcessing = false;
     broadcastState(appState);
