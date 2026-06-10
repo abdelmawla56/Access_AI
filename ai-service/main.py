@@ -13,7 +13,7 @@ import time
 import io
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Query, Request
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Query, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from PIL import Image
@@ -34,7 +34,32 @@ detection_svc: DetectionService = None
 ocr_svc: OCRService = None
 start_time = time.time()
 
-MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "5")) * 1024 * 1024
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
+# ─── Input validation dependency ──────────────────────────────────────────────
+async def validate_image_upload(file: UploadFile = File(...)) -> UploadFile:
+    """
+    Reusable dependency that validates image uploads:
+      1. MIME type must be JPEG, PNG, or WebP
+      2. File size re-checked as defense-in-depth (middleware is first line)
+    """
+    if file.content_type not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type '{file.content_type}'. Allowed: {', '.join(sorted(ALLOWED_MIME_TYPES))}.",
+        )
+    # Read and re-check size (defense-in-depth — middleware may be bypassed by streaming)
+    contents = await file.read()
+    if len(contents) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large ({len(contents)} bytes). Maximum: {MAX_UPLOAD_BYTES // (1024*1024)}MB.",
+        )
+    # Seek back so downstream handlers can re-read
+    await file.seek(0)
+    return file
 
 
 @asynccontextmanager
@@ -105,7 +130,7 @@ async def health():
 # ─── OCR ──────────────────────────────────────────────────────────────────────
 @app.post("/ocr")
 async def ocr_endpoint(
-    file: UploadFile = File(...),
+    file: UploadFile = Depends(validate_image_upload),
     lang: str = Query(default=None, description="Tesseract language, e.g. eng, ara, eng+ara"),
 ):
     """
@@ -115,6 +140,8 @@ async def ocr_endpoint(
     try:
         contents = await file.read()
         return ocr_svc.read(contents, lang=lang)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -122,7 +149,7 @@ async def ocr_endpoint(
 # ─── Detection ────────────────────────────────────────────────────────────────
 @app.post("/detect")
 async def detect_endpoint(
-    file: UploadFile = File(...),
+    file: UploadFile = Depends(validate_image_upload),
     confidence: float = Form(0.4),
 ):
     """
@@ -131,6 +158,8 @@ async def detect_endpoint(
     try:
         contents = await file.read()
         return detection_svc.analyze(contents, confidence_threshold=confidence)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -138,7 +167,7 @@ async def detect_endpoint(
 # ─── Scene Understanding ──────────────────────────────────────────────────────
 @app.post("/scene")
 async def scene_endpoint(
-    file: UploadFile = File(...),
+    file: UploadFile = Depends(validate_image_upload),
     confidence: float = Form(0.35),
 ):
     """
@@ -148,6 +177,8 @@ async def scene_endpoint(
         contents = await file.read()
         image = Image.open(io.BytesIO(contents)).convert("RGB")
         return run_scene(image, confidence_threshold=confidence)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -155,7 +186,7 @@ async def scene_endpoint(
 # ─── Smart Object Search ──────────────────────────────────────────────────────
 @app.post("/search")
 async def search_endpoint(
-    file: UploadFile = File(...),
+    file: UploadFile = Depends(validate_image_upload),
     target: str = Form(...),
     confidence: float = Form(0.35),
 ):

@@ -66,14 +66,20 @@ export function useCamera({
       }
       const canvas = canvasRef.current;
       const video = videoRef.current;
-      canvas.width = 640;
-      canvas.height = 640;
+
+      // Scale to max 640px on the longest side, preserving aspect ratio
+      const MAX_DIM = 640;
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 480;
+      const scale = Math.min(MAX_DIM / vw, MAX_DIM / vh, 1);
+      canvas.width = Math.round(vw * scale);
+      canvas.height = Math.round(vh * scale);
 
       const ctx = canvas.getContext("2d");
       if (!ctx) return resolve(null);
 
-      ctx.drawImage(video, 0, 0, 640, 640);
-      canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.80);
     });
   }, [isReady]);
 

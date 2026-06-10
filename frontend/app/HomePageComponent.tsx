@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
 import { useTTS } from "@/hooks/useTTS";
 import { useCamera } from "@/hooks/useCamera";
+import { useSettings } from "@/hooks/useSettings";
 import { motion } from "framer-motion";
 import {
   Feature,
@@ -857,16 +858,6 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
   }, [isListening, startListening, stopListening, speak]);
 
   const handleFooterContactSubmit = useCallback((e: React.FormEvent) => {
-  // existing contact submit logic remains unchanged
-},
-
-// Replay handler for history panel
-const handleReplay = useCallback((text: string) => {
-  if (text) {
-    speak(text, "assertive");
-    setLastSpoken(text);
-  }
-}, [speak]);
     e.preventDefault();
     const emailEl = document.getElementById("footer-email") as HTMLInputElement;
     const messageEl = document.getElementById("footer-message") as HTMLTextAreaElement;
@@ -880,6 +871,14 @@ const handleReplay = useCallback((text: string) => {
       speak("Thank you. Your message has been sent to support.", "polite");
       emailEl.value = "";
       messageEl.value = "";
+    }
+  }, [speak]);
+
+  // Replay handler for history panel
+  const handleReplay = useCallback((text: string) => {
+    if (text) {
+      speak(text, "assertive");
+      setLastSpoken(text);
     }
   }, [speak]);
 
@@ -975,6 +974,20 @@ const handleReplay = useCallback((text: string) => {
     return () => clearTimeout(timer);
   }, []);
 
+  // ── SpeechRecognition compatibility — voice fallback for unsupported browsers ──
+  useEffect(() => {
+    if (!isSupported && typeof window !== "undefined" && window.speechSynthesis) {
+      const timer = setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(
+          "Warning: Your browser does not support voice recognition. Please switch to Google Chrome for full voice control."
+        );
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isSupported]);
+
   return (
     <main
       id="main-content"
@@ -993,10 +1006,50 @@ const handleReplay = useCallback((text: string) => {
         }
       `}</style>
 
-      {/* Voice-Unsupported Banner */}
+      {/* ARIA Live Regions — screen reader announcements */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        id="aria-status"
+        className="sr-only"
+        style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}
+      >
+        {lastSpoken}
+      </div>
+      <div
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+        id="aria-alert"
+        className="sr-only"
+        style={{ position: "absolute", width: "1px", height: "1px", padding: 0, margin: "-1px", overflow: "hidden", clip: "rect(0,0,0,0)", whiteSpace: "nowrap", border: 0 }}
+      >
+        {error}
+      </div>
+
+      {/* Voice-Unsupported Banner — Chrome Required */}
       {!isSupported && (
-        <div className="w-full max-w-7xl mx-auto mb-2 bg-amber-500/20 border border-amber-500/40 rounded-2xl px-4 py-3 text-center text-xs text-amber-950 font-bold z-50 flex items-center justify-center gap-2 shadow-sm">
-          <span>⚠️</span> Voice control is offline. Your browser does not support the Web Speech API. We recommend Google Chrome.
+        <div
+          role="alert"
+          className="w-full max-w-7xl mx-auto mb-2 bg-red-500/15 border-2 border-red-500/50 rounded-2xl px-6 py-4 text-center text-sm text-red-900 font-bold z-50 flex flex-col items-center justify-center gap-2 shadow-lg"
+        >
+          <div className="flex items-center gap-2 text-base">
+            <span>🚫</span> Voice Control Unavailable
+          </div>
+          <p className="text-xs font-medium text-red-800/80 max-w-md">
+            Your browser does not support the Web Speech API required for voice commands.
+            Please use{" "}
+            <a
+              href="https://www.google.com/chrome/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline text-blue-700 hover:text-blue-900"
+            >
+              Google Chrome
+            </a>{" "}
+            for the full experience.
+          </p>
         </div>
       )}
 
@@ -1316,7 +1369,7 @@ const handleReplay = useCallback((text: string) => {
           onClose={() => setHistoryOpen(false)}
           onReplay={handleReplay}
         />
-      />
+
 
       <EmergencyContactsModal
         isOpen={showEmergencyContacts}
