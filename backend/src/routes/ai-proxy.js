@@ -22,7 +22,7 @@ const AI_URL = () => process.env.AI_SERVICE_URL || "http://localhost:8000";
 function createAIProxyRoute(pythonEndpoint, featureName) {
   const router = express.Router();
 
-  router.post("/scan", upload.single("frame"), async (req, res) => {
+  router.post(["/scan", "/analyze"], upload.single("frame"), async (req, res) => {
     const appState = req.app.locals.appState;
 
     if (!req.file) {
