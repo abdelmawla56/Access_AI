@@ -23,6 +23,7 @@ export function useVoiceRecognition({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
   const restartTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeRef = useRef(false);
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,13 +56,20 @@ export function useVoiceRecognition({
     recognition.onerror = (event: any) => {
       if (event.error === "no-speech") return; // silently ignore
       if (event.error === "aborted") return;
-      onError?.(`Voice error: ${event.error}`);
+      
+      // If error is not-allowed, user blocked mic
+      if (event.error === "not-allowed") {
+        onError?.("Microphone access blocked. Please allow permissions in your browser address bar.");
+      } else {
+        onError?.(`Voice error: ${event.error}`);
+      }
       setIsListening(false);
+      activeRef.current = false;
     };
 
     recognition.onend = () => {
       // Auto-restart if continuous mode is on and still supposed to be listening
-      if (continuous && recognitionRef.current) {
+      if (continuous && activeRef.current) {
         restartTimerRef.current = setTimeout(() => {
           try {
             recognitionRef.current?.start();
@@ -69,31 +77,32 @@ export function useVoiceRecognition({
         }, 300);
       } else {
         setIsListening(false);
+        activeRef.current = false;
       }
     };
 
     recognitionRef.current = recognition;
     return () => {
+      activeRef.current = false;
       recognition.abort();
       if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     };
-  }, [lang, continuous]);
+  }, [lang, continuous, onResult, onError, onConfidence]);
 
   const startListening = useCallback(() => {
-    if (!recognitionRef.current || isListening) return;
+    if (!recognitionRef.current || activeRef.current) return;
     try {
+      activeRef.current = true;
       recognitionRef.current.start();
       setIsListening(true);
     } catch (_) {}
-  }, [isListening]);
+  }, []);
 
   const stopListening = useCallback(() => {
     if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     if (!recognitionRef.current) return;
-    // Set ref to null so onend handler won't restart
-    const rec = recognitionRef.current;
-    recognitionRef.current = null;
-    try { rec.stop(); } catch (_) {}
+    activeRef.current = false;
+    try { recognitionRef.current.stop(); } catch (_) {}
     setIsListening(false);
   }, []);
 

@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,11 +9,11 @@
   --void:        #f5f7fb;
   --obsidian:    #ffffff;
   --deep:        #ffffff;
-  --surface:     rgba(255, 255, 255, 0.7);
-  --card:        rgba(255, 255, 255, 0.5);
-  --glass:       rgba(255, 255, 255, 0.6);
-  --glass-hover: rgba(255, 255, 255, 0.9);
-  --border:      rgba(148, 163, 184, 0.18);
+  --surface:     rgba(255, 255, 255, 0.55);
+  --card:        rgba(255, 255, 255, 0.55);
+  --glass:       rgba(255, 255, 255, 0.55);
+  --glass-hover: rgba(255, 255, 255, 0.65);
+  --border:      rgba(255, 255, 255, 0.7);
   --border-glow: rgba(167, 139, 250, 0.2);
 
   /* Neon palette */
@@ -25,15 +25,15 @@
   --amber:       #fcd34d;
   --danger:      #fda4af;
 
-  --text:        #111827;
-  --muted:       #6b7280;
-  --subtle:      #9ca3af;
+  --text:        #2d2d3a;
+  --muted:       #6b6b8a;
+  --subtle:      #a89bc2;
 
   /* Glow shadows */
   --glow-violet: 0 0 30px rgba(167, 139, 250, 0.15), 0 0 60px rgba(167, 139, 250, 0.08);
   --glow-cyan:   0 0 30px rgba(125, 211, 252, 0.15), 0 0 60px rgba(125, 211, 252, 0.08);
-  --lift:        0 10px 30px rgba(148, 163, 184, 0.08), inset 0 1px 2px rgba(255,255,255,1);
-  --lift-hover:  0 20px 40px rgba(167, 139, 250, 0.12), inset 0 1px 2px rgba(255,255,255,1);
+  --lift:        0 4px 24px rgba(180,160,220,0.13);
+  --lift-hover:  0 8px 32px rgba(180,160,220,0.22);
 }
 
 /* ─── Reset ─────────────────────────────────────────────────────────────────── */
@@ -45,14 +45,14 @@
 }
 
 html {
-  font-size: 17px;
+  font-size: 16px;
   scroll-behavior: smooth;
 }
 
 body {
   background-color: var(--void);
   color: var(--text);
-  font-family: 'Outfit', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   min-height: 100dvh;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
@@ -100,19 +100,55 @@ body {
 
 /* ─── Glass Card Base ───────────────────────────────────────────────────────── */
 .glass-card {
-  background: var(--card);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
-  border: 1.5px solid var(--border);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 20px;
-  box-shadow: var(--lift);
-  transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 0 4px 24px rgba(180, 160, 220, 0.13);
+  transition: all 200ms ease;
 }
 .glass-card:hover {
-  box-shadow: var(--lift-hover);
-  background: var(--glass-hover);
-  border-color: var(--obsidian);
-  transform: translateY(-5px);
+  box-shadow: 0 8px 32px rgba(180, 160, 220, 0.22);
+  background: rgba(255, 255, 255, 0.65);
+  transform: scale(1.02);
+}
+
+/* ─── Radial Module Circles ─────────────────────────────────────────────────── */
+.module-circle {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 24px rgba(180, 160, 220, 0.13);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  transition: all 200ms ease;
+  position: relative;
+}
+.module-circle:hover, .module-circle.active {
+  transform: scale(1.04);
+  background: rgba(255, 255, 255, 0.65);
+  box-shadow: 0 8px 32px rgba(180, 160, 220, 0.22);
+}
+.module-circle.active::before, .module-circle:hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(135deg, #f9d0e8, #b8dff5);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 /* ─── Floating Animation ─────────────────────────────────────────────────────── */

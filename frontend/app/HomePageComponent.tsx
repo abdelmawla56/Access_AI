@@ -27,6 +27,7 @@ import EmergencyOverlay from "@/components/EmergencyOverlay";
 import AboutModal from "@/components/AboutModal";
 import RatingModal from "@/components/RatingModal";
 import HealthModal from "@/components/HealthModal";
+import ResultsModal from "@/components/ResultsModal";
 
 // New Components
 import VoiceCommandsGuide from "@/components/VoiceCommandsGuide";
@@ -141,6 +142,7 @@ export default function HomePage() {
   const [debugMode, setDebugMode] = useState(false);
   const [lastSpoken, setLastSpoken] = useState<string>("");
   const [lastHeard, setLastHeard] = useState<string>("");
+  const [voiceTranscript, setVoiceTranscript] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [suggestion, setSuggestion] = useState<string | null>(null);
 
@@ -166,6 +168,7 @@ export default function HomePage() {
   const [showAbout, setShowAbout] = useState(false);
   const [showRating, setShowRating] = useState(false);
   const [showHealth, setShowHealth] = useState(false);
+  const [showResultsModal, setShowResultsModal] = useState(false);
   const [ratingVal, setRatingVal] = useState<number>(5);
   const [ratingComment, setRatingComment] = useState("");
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
@@ -416,8 +419,10 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
   // ── Voice command handler ─────────────────────────────────────────────────
   const handleVoiceResult = useCallback(
     async (transcript: string, isFinal: boolean) => {
+      setVoiceTranscript(transcript);
       if (!isFinal) return;
       setLastHeard(transcript);
+      setTimeout(() => setVoiceTranscript(""), 1200);
 
       // Check parametric commands first
       // 1. Search object
@@ -455,7 +460,12 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
       }
 
       const action = matchCommand(transcript);
-      if (!action) return;
+      if (!action) {
+        speak("Command not recognized. Please try again.", "polite");
+        setError(`Unrecognized command: "${transcript}"`);
+        setSuggestion("Try: 'guide me', 'detect objects', 'read text', or say 'help'.");
+        return;
+      }
 
       setError(null);
       setSuggestion(null);
@@ -585,6 +595,8 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
             setShowAssistant(false);
           } else if (showEmergencyContacts) {
             setShowEmergencyContacts(false);
+          } else if (showResultsModal) {
+            setShowResultsModal(false);
           } else {
             setShowAbout(false);
             setShowRating(false);
@@ -641,6 +653,7 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
       startSearchingForObject,
       queryEnvironmentMemory,
       sendAssistantMessage,
+      setVoiceTranscript,
     ]
   );
 
@@ -655,6 +668,7 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
       setShowAbout(false);
       setShowRating(false);
       setShowHealth(false);
+      setShowResultsModal(false);
       setIsSearchingObject(false);
       if (emergencyIntervalRef.current) {
         clearInterval(emergencyIntervalRef.current);
@@ -830,10 +844,12 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
           setSuggestion("Target found! Say 'standby' to reset.");
         }
       }
+      setShowResultsModal(true);
     } catch (err: any) {
       const msg = "Processing failed. Please try again.";
       setError(msg);
       speak(msg, "assertive");
+      setShowResultsModal(true);
     } finally {
       setIsProcessing(false);
     }
@@ -842,7 +858,10 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
   // ── Voice recognition hook ───────────────────────────────────────────────
   const { isListening, isSupported, startListening, stopListening } = useVoiceRecognition({
     onResult: handleVoiceResult,
-    onError: (e) => speak(`Voice error: ${e}. Please try again.`, "assertive"),
+    onError: (e) => {
+      speak(`Voice error: ${e}. Please try again.`, "assertive");
+      setError(`Voice recognition error: ${e}`);
+    },
     onConfidence: (c) => setSpeechConfidence(c),
     continuous: true,
   });
@@ -850,9 +869,11 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
   const toggleMic = useCallback(() => {
     if (isListening) {
       stopListening();
+      setVoiceTranscript("");
       speak("Microphone standby.", "polite");
     } else {
       startListening();
+      setError(null);
       speak("Listening activated.", "polite");
     }
   }, [isListening, startListening, stopListening, speak]);
@@ -1075,8 +1096,11 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
              👁️
            </div>
            <div>
-             <div className="text-xl font-black text-[#2d1b4e] tracking-wider leading-tight">SYMBIO TECH</div>
-             <div className="text-[9px] text-[#7c5fa0] tracking-widest uppercase mt-0.5">AI-DRIVEN ASSISTIVE SUITE · VISION + GLOVE</div>
+             <div className="text-xl font-bold tracking-wider leading-tight" style={{ fontFamily: "'Inter', 'DM Sans', sans-serif" }}>
+               <span style={{ color: '#2d2d3a' }}>SYMBIO </span>
+               <span style={{ color: '#6ab4e8' }}>TECH</span>
+             </div>
+             <div className="text-[9px] text-[#6b6b8a] tracking-widest uppercase mt-0.5">AI-DRIVEN ASSISTIVE SUITE · VISION + GLOVE</div>
            </div>
         </div>
         <div className="flex items-center gap-3">
@@ -1094,7 +1118,15 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
       {/* Center Circular Orbit Layout */}
       <div className="relative w-full h-[540px] flex items-center justify-center shrink-0 z-10 scale-75 sm:scale-90 md:scale-100 transition-transform mt-4 md:mt-8">
           {/* Center Camera Feed in Circle */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full border-8 border-white shadow-[0_15px_50px_rgba(0,0,0,0.15)] overflow-hidden bg-black z-20 flex items-center justify-center">
+          <div
+            onClick={toggleMic}
+            title={isListening ? "Click to stop listening" : "Click to start listening"}
+            className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] rounded-full border-8 shadow-[0_15px_50px_rgba(0,0,0,0.15)] overflow-hidden bg-black z-20 flex items-center justify-center cursor-pointer transition-all duration-500 ${
+              isListening
+                ? "border-[#c084fc] shadow-[0_0_40px_rgba(192,132,252,0.4)] scale-105"
+                : "border-white hover:border-sky-200"
+            }`}
+          >
              <div className="absolute top-4 left-1/2 -translate-x-1/2 text-[10px] py-1 px-3 rounded-full bg-rose-600/30 border border-rose-600/50 text-white font-bold flex items-center gap-1.5 z-30 whitespace-nowrap shadow-sm backdrop-blur-md">
                 <div className={`w-2 h-2 rounded-full ${cameraReady ? "bg-rose-500 animate-pulse shadow-[0_0_5px_#f43f5e]" : "bg-gray-400"}`}></div>
                 {cameraReady ? "LIVE" : "NO SIGNAL"}
@@ -1115,6 +1147,32 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
           
           {/* Floating Results Panel below the Camera Feed */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-[150px] w-[340px] z-40 flex flex-col gap-2 drop-shadow-xl">
+            {/* Live Speech Feedback Bubble */}
+            {(isListening || lastHeard) && (
+              <div className="w-full bg-white/95 border border-white/40 rounded-2xl p-4 flex items-center gap-3.5 shadow-lg animate-fade-in transition-all duration-300">
+                <div className="relative flex items-center justify-center shrink-0">
+                  {isListening ? (
+                    <div className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-lg">💬</span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[10px] font-black uppercase tracking-wider text-gray-500">
+                    {isListening ? "Listening in Real-Time" : "Last Voice Command"}
+                  </div>
+                  <p className="text-sm font-semibold text-gray-800 truncate mt-0.5">
+                    {isListening 
+                      ? (voiceTranscript ? `"${voiceTranscript}"` : "Speak a command...") 
+                      : (lastHeard ? `"${lastHeard}"` : "")}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <ResultPanel
               feature={feature}
               text={ocrText}
@@ -1195,11 +1253,11 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
                  className="absolute top-1/2 left-1/2 -mt-[65px] -ml-[65px] z-10 transition-all duration-1000 ease-out"
                  style={{ transform: `translate(${x}px, ${y}px)` }}
                >
-                 <div onClick={() => switchFeature(m.id as Feature)} className={`w-[130px] h-[130px] rounded-full flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 shadow-xl border-2 backdrop-blur-md ${feature === m.id ? "bg-white scale-110 border-[#38bdf8] shadow-[#38bdf8]/40" : "bg-white/70 border-white hover:bg-white/95 hover:scale-105"}`}>
+                 <div onClick={() => switchFeature(m.id as Feature)} className={`module-circle ${feature === m.id ? "active" : ""}`}>
                     <div className="text-3xl mb-1 drop-shadow-sm">{m.icon}</div>
-                    <div className="text-[12px] font-bold text-[#2d1b4e] leading-tight">{m.label}</div>
-                    <div className="text-[7px] text-[#7c5fa0] mt-1.5 uppercase tracking-widest">Say</div>
-                    <div className="text-[8px] font-bold text-[#4a3570]">"{m.cmd}"</div>
+                    <div className="text-[12px] font-normal" style={{ color: '#6b6b8a' }}>{m.label}</div>
+                    <div style={{ fontSize: '10px', letterSpacing: '0.12em', color: '#a89bc2', marginTop: '6px', textTransform: 'uppercase' }}>Say</div>
+                    <div className="text-[10px] font-bold" style={{ color: '#a89bc2', textTransform: 'uppercase', letterSpacing: '0.05em' }}>"{m.cmd}"</div>
                  </div>
                </div>
              );
@@ -1207,137 +1265,111 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
       </div>
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
-      <footer className="w-full z-20 shrink-0 mt-auto bg-white border-t border-gray-100 text-gray-600 pt-10 pb-0 shadow-[0_-4px_24px_rgba(180,160,210,0.06)]" style={{ fontFamily: "'Inter','Segoe UI',sans-serif" }}>
-        
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          
-          {/* Column 1: Brand & Info */}
-          <div>
-            <h2 className="text-lg font-bold text-[#2d1b4e] mb-3">
-              Symbio<span className="text-[#38bdf8]">Tech</span>
-            </h2>
-            <div className="space-y-2 text-xs text-gray-500">
-
-            </div>
+      <footer className="w-full max-w-7xl mx-auto z-20 shrink-0 mt-auto mb-4 px-4">
+        <div className="glass-card w-full pt-8 pb-4">
+          <style>{`
+            .st-footer { font-family: 'Inter', 'Segoe UI', sans-serif; width: 100%; box-sizing: border-box; }
+            .st-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border-top: 0.5px solid rgba(255,255,255,0.4); }
+            .st-col { padding: 2rem 1.75rem; border-right: 0.5px solid rgba(255,255,255,0.4); }
+            .st-col:last-child { border-right: none; }
+            .st-col-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: #a89bc2; text-transform: uppercase; margin: 0 0 1rem; }
+            .st-brand { font-size: 20px; font-weight: 700; color: #2d2d3a; margin: 0 0 4px; }
+            .st-brand span { color: #6ab4e8; }
+            .st-tagline { font-size: 12px; color: #6b6b8a; margin: 0 0 1.25rem; line-height: 1.5; }
+            .st-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+            .st-links button { background: none; border: none; padding: 0; cursor: pointer; text-align: left; font-size: 13.5px; color: #6b6b8a; text-decoration: none; display: flex; align-items: center; gap: 7px; transition: color 0.15s; }
+            .st-links button:hover { color: #9b7fd4; }
+            .st-links span { font-size: 14px; }
+            .st-ai-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #a89bc2; margin: 0 0 8px; font-weight: 500; }
+            .st-ai-input { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.3); border: 0.5px solid rgba(255,255,255,0.4); border-radius: 999px; padding: 8px 10px 8px 14px; }
+            .st-ai-input input { flex: 1; border: none; background: transparent; font-size: 13px; color: #2d2d3a; outline: none; font-family: 'Inter', 'Segoe UI', sans-serif; }
+            .st-ai-input input::placeholder { color: #a89bc2; }
+            .st-send-btn { background: #f0a8d0; border: none; border-radius: 999px; padding: 5px 13px; font-size: 12px; font-weight: 500; color: #4a1528; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+            .st-send-btn:hover { background: #e893c0; }
+            .st-contact-field { width: 100%; box-sizing: border-box; border: none; border-bottom: 0.5px solid rgba(255,255,255,0.5); background: transparent; padding: 9px 0; font-size: 13.5px; font-family: 'Inter', 'Segoe UI', sans-serif; color: #2d2d3a; outline: none; margin-bottom: 12px; }
+            .st-contact-field::placeholder { color: #a89bc2; }
+            .st-contact-field:focus { border-bottom-color: #9b7fd4; }
+            textarea.st-contact-field { resize: none; height: 72px; }
+            .st-submit { background: transparent; border: 0.5px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 8px 18px; font-size: 13px; font-family: 'Inter', 'Segoe UI', sans-serif; color: #6b6b8a; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+            .st-submit:hover { background: rgba(255,255,255,0.4); color: #2d2d3a; }
+            .st-statusbar { border-top: 0.5px solid rgba(255,255,255,0.4); padding: 10px 1.75rem; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+            .st-status-text { font-size: 11.5px; color: #6b6b8a; }
+            .st-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4caf82; display: inline-block; margin-right: 5px; animation: pulse 2s infinite; }
+            .st-online { display: flex; align-items: center; margin-left: auto; font-size: 11.5px; color: #6b6b8a; font-weight: 500; }
+            .st-divider { color: rgba(255,255,255,0.5); margin: 0 5px; }
+            @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
             
-            {/* Outlined Social Icon Squares */}
+            @media (max-width: 768px) {
+              .st-grid { grid-template-columns: 1fr; }
+              .st-col { border-right: none; border-bottom: 0.5px solid rgba(255,255,255,0.4); }
+              .st-col:last-child { border-bottom: none; }
+            }
+          `}</style>
+          <div className="st-footer">
+            <div className="st-grid">
 
-          </div>
-
-          {/* Column 2: QUICK LINKS */}
-          <div>
-            <h3 className="text-xs font-bold text-[#2d1b4e] uppercase tracking-wider mb-4">
-              QUICK LINKS
-            </h3>
-            <ul className="space-y-2 text-xs pl-0 list-none">
-              <li>
-                <button onClick={() => setShowAbout(true)} className="text-gray-500 hover:text-gray-900 hover:underline bg-transparent border-none p-0 cursor-pointer transition-colors text-left">
-                  • Privacy Policy
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setShowAbout(true)} className="text-gray-500 hover:text-gray-900 hover:underline bg-transparent border-none p-0 cursor-pointer transition-colors text-left">
-                  • About Symbio Tech
-                </button>
-              </li>
-              <li>
-                <button onClick={() => speak('Symbio Tech is built for accessibility first.', 'polite')} className="text-gray-500 hover:text-gray-900 hover:underline bg-transparent border-none p-0 cursor-pointer transition-colors text-left">
-                  • Accessibility Statement
-                </button>
-              </li>
-              <li>
-                <button onClick={() => setShowEmergencyContacts(true)} className="text-gray-500 hover:text-gray-900 hover:underline bg-transparent border-none p-0 cursor-pointer transition-colors text-left">
-                  • Support & Emergency Contacts
-                </button>
-              </li>
-              <li>
-                <button onClick={() => { switchFeature('none'); setShowRating(true); speak('System rating panel active.', 'polite'); }} className="text-gray-500 hover:text-gray-900 hover:underline bg-transparent border-none p-0 cursor-pointer transition-colors text-left">
-                  • Rate Assistive Suite
-                </button>
-              </li>
-              <li>
-                <button onClick={toggleMic} className="text-gray-500 hover:text-gray-900 hover:underline bg-transparent border-none p-0 cursor-pointer transition-colors text-left">
-                  • {isListening ? 'Voice Core Active' : 'Voice Core Standby'} (🎙️)
-                </button>
-              </li>
-            </ul>
-
-            {/* AI Query box */}
-            <div className="mt-5">
-              <span className="text-[10px] font-bold text-[#38bdf8] uppercase tracking-wider block mb-1.5">Query AI Assistant</span>
-              <div className="flex items-center gap-2 bg-white border border-gray-300 rounded px-2.5 py-1.5 w-full max-w-[240px] shadow-sm">
-                <input
-                  type="text"
-                  placeholder="Ask AI anything…"
-                  className="bg-transparent border-none outline-none text-xs text-gray-700 placeholder-gray-400 w-full min-w-0"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      const t = e.target as HTMLInputElement;
-                      if (t.value) { sendAssistantMessage(t.value); setShowAssistant(true); t.value = ''; }
-                    }
-                  }}
-                />
-                <button onClick={() => setShowAssistant(true)} className="text-sky-600 text-xs shrink-0 select-none bg-transparent border-none cursor-pointer">
-                  🧠{envMemory.length > 0 ? ` ${envMemory.length}` : ''}
-                </button>
+              <div className="st-col">
+                <p className="st-col-label">About</p>
+                <p className="st-brand">SYMBIO <span>TECH</span></p>
+                <p className="st-tagline">AI-driven assistive suite.<br/>Vision + glove interface.</p>
+                <p className="st-ai-label">Query AI assistant</p>
+                <div className="st-ai-input">
+                  <span style={{ fontSize: "15px", color: "#c084b8" }} aria-hidden="true">🎤</span>
+                  <input 
+                    type="text" 
+                    placeholder="Ask AI anything…" 
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const t = e.target as HTMLInputElement;
+                        if (t.value) { sendAssistantMessage(t.value); setShowAssistant(true); t.value = ''; }
+                      }
+                    }}
+                  />
+                  <button className="st-send-btn" onClick={() => setShowAssistant(true)}>
+                    <span aria-hidden="true">🚀</span> Send
+                  </button>
+                </div>
               </div>
+
+              <div className="st-col">
+                <p className="st-col-label">Quick links</p>
+                <ul className="st-links">
+                  <li><button onClick={() => setShowAbout(true)}><span aria-hidden="true">🛡️</span> Privacy policy</button></li>
+                  <li><button onClick={() => setShowAbout(true)}><span aria-hidden="true">ℹ️</span> About Symbio Tech</button></li>
+                  <li><button onClick={() => speak('Symbio Tech is built for accessibility first.', 'polite')}><span aria-hidden="true">♿</span> Accessibility statement</button></li>
+                  <li><button onClick={() => setShowEmergencyContacts(true)}><span aria-hidden="true">📞</span> Support & emergency contacts</button></li>
+                  <li><button onClick={() => { switchFeature('none'); setShowRating(true); speak('System rating panel active.', 'polite'); }}><span aria-hidden="true">⭐</span> Rate assistive suite</button></li>
+                  <li><button onClick={toggleMic}><span aria-hidden="true">🎙️</span> {isListening ? 'Voice core active' : 'Voice core standby'}</button></li>
+                </ul>
+              </div>
+
+              <div className="st-col">
+                <p className="st-col-label">Contact us</p>
+                <form onSubmit={handleFooterContactSubmit} className="flex flex-col">
+                  <input id="footer-email" className="st-contact-field" type="email" placeholder="Your email address" required />
+                  <textarea id="footer-message" className="st-contact-field" placeholder="Message…" required></textarea>
+                  <button type="submit" className="st-submit"><span aria-hidden="true">🚀</span> Send message</button>
+                </form>
+              </div>
+
             </div>
-          </div>
 
-          {/* Column 3: Contact Us */}
-          <div className="flex flex-col">
-            <h3 className="text-xs font-bold text-[#2d1b4e] uppercase tracking-wider mb-4">
-              Contact Us
-            </h3>
-            <form onSubmit={handleFooterContactSubmit} className="flex flex-col gap-2.5">
-              <input
-                id="footer-email"
-                type="email"
-                placeholder="Your email address"
-                required
-                className="w-full bg-gray-50 border border-gray-200 rounded px-3 py-2 text-xs text-gray-700 placeholder-gray-400 outline-none focus:border-[#38bdf8] transition-colors"
-              />
-              <textarea
-                id="footer-message"
-                placeholder="Message..."
-                required
-                rows={3}
-                className="w-full bg-gray-50 border border-gray-200 rounded px-3 py-2 text-xs text-gray-700 placeholder-gray-400 outline-none focus:border-[#38bdf8] transition-colors resize-none"
-              />
-              <button
-                type="submit"
-                className="bg-[#0284c7] hover:bg-[#0369a1] text-white py-1.5 px-4 rounded text-xs font-bold flex items-center gap-1.5 cursor-pointer self-end transition-colors border-none"
-              >
-                🚀 Send
-              </button>
-            </form>
-          </div>
-
-        </div>
-
-        {/* Bottom bar */}
-        <div className="w-full bg-gray-50 py-4 border-t border-gray-100">
-          <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-[#2d1b4e]">Symbio Tech</span>
-              <span>·</span>
-              <span>© {new Date().getFullYear()}</span>
-              <span>·</span>
-              <span>Built for Accessibility</span>
-              <span>·</span>
-              <span className="text-gray-500">Health: {healthData ? `${healthData.heartRate} bpm · ${healthData.temperature}°C` : '75 bpm · 36.5°C'}</span>
-              <span>·</span>
-              <span className="text-gray-500">Memory: {envMemory.length} Checkpoints</span>
-              <span>·</span>
-              <span className="text-gray-500">Uptime: <UptimeCounter /></span>
-            </div>
-            <div className="flex items-center gap-1.5 text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Online</span>
+            <div className="st-statusbar">
+              <span className="st-status-text">Symbio Tech</span>
+              <span className="st-divider">·</span>
+              <span className="st-status-text">© {new Date().getFullYear()}</span>
+              <span className="st-divider">·</span>
+              <span className="st-status-text">Built for accessibility</span>
+              <span className="st-divider">·</span>
+              <span className="st-status-text"><span aria-hidden="true">❤️</span> {healthData ? `${healthData.heartRate} bpm · ${healthData.temperature}°C` : '75 bpm · 36.5°C'}</span>
+              <span className="st-divider">·</span>
+              <span className="st-status-text"><span aria-hidden="true">🧠</span> {envMemory.length} checkpoints</span>
+              <span className="st-divider">·</span>
+              <span className="st-status-text"><span aria-hidden="true">⏱️</span> <UptimeCounter /></span>
+              <span className="st-online"><span className="st-status-dot"></span>Online</span>
             </div>
           </div>
         </div>
-
       </footer>
 
       
@@ -1390,6 +1422,26 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
           speak("AI assistant history cleared.", "assertive");
         }}
         onClose={() => setShowAssistant(false)}
+      />
+
+      <ResultsModal
+        show={showResultsModal}
+        onClose={() => setShowResultsModal(false)}
+        feature={feature}
+        text={ocrText}
+        currency={currencyVal}
+        hint={navHint}
+        detections={detections}
+        error={error}
+        onReadAloud={() => {
+          if (ocrText) {
+            speak(ocrText, "assertive");
+            setLastSpoken(ocrText);
+          } else if (navHint) {
+            speak(navHint, "assertive");
+            setLastSpoken(navHint);
+          }
+        }}
       />
 
       <AboutModal
