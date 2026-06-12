@@ -42,7 +42,7 @@ export default function VoiceCommandsGuide() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div style={{ position: "fixed", top: "24px", left: "24px", zIndex: 9999 }}>
+    <div style={{ position: "fixed", top: "100px", left: "24px", zIndex: 9999 }}>
       {isOpen ? (
         <div className="w-80 max-h-[500px] flex flex-col glass-card border border-white/20 shadow-2xl rounded-3xl p-5 overflow-hidden transition-all duration-300 animate-rise-in">
           <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">

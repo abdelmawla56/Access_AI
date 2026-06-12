@@ -37,7 +37,7 @@ function createAIProxyRoute(pythonEndpoint, featureName) {
 
     if (!allowedFeatures.includes(appState.activeFeature)) {
       return res.status(409).json({
-        error: `${featureName} feature is not active. Switch features first.`,
+        error: `${featureName.charAt(0).toUpperCase() + featureName.slice(1)} feature is not active. Switch features first.`,
       });
     }
 
@@ -133,6 +133,6 @@ function broadcastState(appState) {
     },
   });
   appState.clients.forEach((client) => {
-    try { if (client.readyState === 1) client.send(payload); } catch (_) {}
+    try { if (client.readyState === 1) client.send(payload); } catch (_) { }
   });
 }

@@ -12,6 +12,7 @@ export default function SmartSuggestionsBar({ suggestion, onDismiss }: Props) {
 
   useEffect(() => {
     if (suggestion) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisible(true);
       const timer = setTimeout(() => {
         setVisible(false);

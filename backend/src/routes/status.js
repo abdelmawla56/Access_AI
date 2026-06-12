@@ -10,7 +10,7 @@ router.get("/", (req, res) => {
 // POST /api/status/feature – switch active feature
 router.post("/feature", (req, res) => {
   const { feature } = req.body;
-  const valid = ["ocr", "detection", "navigation", "none"];
+  const valid = ["ocr", "detection", "navigation", "currency", "scene", "search", "assistant", "emergency", "glove", "none"];
   if (!valid.includes(feature)) {
     return res.status(400).json({ error: `Invalid feature. Choose from: ${valid.join(", ")}` });
   }

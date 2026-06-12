@@ -30,6 +30,7 @@ export function useVoiceRecognition({
     const w = window as any;
     const SpeechRecognition = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!SpeechRecognition) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsSupported(false);
       onError?.("Speech recognition is not supported in this browser.");
       return;

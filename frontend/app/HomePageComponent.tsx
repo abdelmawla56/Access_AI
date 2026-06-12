@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable */
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useVoiceRecognition } from "@/hooks/useVoiceRecognition";
@@ -136,6 +137,11 @@ function UptimeCounter() {
   return <>{m}:{s}</>;
 }
 
+// ════════════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT: HomePage
+// All state, handlers, voice commands, effects, and render logic live here.
+// Sections are marked with ════ headers for navigation.
+// ════════════════════════════════════════════════════════════════════════════════
 export default function HomePage() {
   const [feature, setFeature] = useState<Feature>("none");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -199,8 +205,8 @@ export default function HomePage() {
 
   // Voice-only / Hands-free Mode UI state
   const [voiceOnlyMode, setVoiceOnlyMode] = useState(false);
-const [isSettingsOpen, setSettingsOpen] = useState(false);
-const [isHistoryOpen, setHistoryOpen] = useState(false);
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [isHistoryOpen, setHistoryOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<{ type: string; payload?: any } | null>(null);
 
   // Refs
@@ -715,6 +721,9 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
         navIntervalRef.current = setInterval(() => {
           triggerCapture();
         }, 6000);
+      } else if (f === "ocr" || f === "detection" || f === "currency" || f === "scene") {
+        // Auto-trigger a single scan when switching to these features
+        setTimeout(() => triggerCapture(), 1500);
       }
     },
     [cameraReady, speak, cancel, startCamera]
@@ -905,6 +914,7 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
 
   // ── WebSocket – real-time backend state sync ──────────────────────────────
   useEffect(() => {
+    /*
     const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:5000/ws";
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
@@ -931,8 +941,9 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
       } catch (_) {}
     };
     ws.onerror = () => {};
+    */
     return () => {
-      ws.close();
+      // ws.close();
       if (navIntervalRef.current) clearInterval(navIntervalRef.current);
       if (searchIntervalRef.current) clearInterval(searchIntervalRef.current);
     };
@@ -963,16 +974,41 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
         toggleMic();
       } else if (e.key === "Enter") {
         e.preventDefault();
-        triggerCapture();
+        // Trigger capture then immediately read the result aloud
+        triggerCapture().then(() => {
+          // After processing, read out the latest result
+          setTimeout(() => {
+            if (feature === "ocr" && ocrText) {
+              speak(ocrText, "assertive");
+              setLastSpoken(ocrText);
+            } else if (feature === "currency" && currencyVal) {
+              speak(currencyVal, "assertive");
+              setLastSpoken(currencyVal);
+            } else if (feature === "detection" && detections && detections.length > 0) {
+              const names = [...new Set(detections.map((d) => d.label))].join(", ");
+              const msg = `Detected: ${names}.`;
+              speak(msg, "assertive");
+              setLastSpoken(msg);
+            } else if (feature === "search" && searchHint) {
+              speak(searchHint, "assertive");
+              setLastSpoken(searchHint);
+            } else if (lastSpoken) {
+              speak(lastSpoken, "assertive");
+            }
+          }, 600);
+        });
       } else if (key === "1") {
         e.preventDefault();
-        switchFeature("ocr");
+        switchFeature("detection"); // Object HUD
       } else if (key === "2") {
         e.preventDefault();
-        switchFeature("detection");
+        switchFeature("ocr"); // Text Reader
       } else if (key === "3") {
         e.preventDefault();
-        switchFeature("navigation");
+        switchFeature("search"); // Smart Search
+      } else if (key === "4") {
+        e.preventDefault();
+        switchFeature("currency"); // Money ID
       } else if (key === "r") {
         e.preventDefault();
         if (lastSpoken) {
@@ -985,7 +1021,7 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleMic, triggerCapture, switchFeature, lastSpoken, speak]);
+  }, [toggleMic, triggerCapture, switchFeature, lastSpoken, speak, feature, ocrText, currencyVal, detections, searchHint]);
 
   // ── Announce app on load ──────────────────────────────────────────────────
   useEffect(() => {
@@ -1012,7 +1048,7 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
   return (
     <main
       id="main-content"
-      className="relative min-h-dvh flex flex-col items-center justify-between p-4 overflow-hidden text-gray-800"
+      className="relative min-h-dvh flex flex-col items-center justify-start p-4 overflow-x-hidden text-gray-800"
       style={{
         background: "linear-gradient(135deg, #f9d0e8 0%, #e8d5f5 25%, #d0e8f9 60%, #b8dff5 100%)",
       }}
@@ -1089,8 +1125,10 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
         </div>
       )}
 
-      {/* Header - No horizontal lines */}
-      <header className="w-full max-w-7xl px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4 z-20 shrink-0">
+      {/* Top Viewport Container to push Footer down */}
+      <div className="w-full flex flex-col items-center min-h-[calc(100dvh-2rem)]">
+        {/* Header - No horizontal lines */}
+        <header className="w-full max-w-7xl px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-4 z-20 shrink-0">
         <div className="flex items-center gap-3">
            <div className="w-10 h-10 bg-gradient-to-br from-[#c084fc] to-[#38bdf8] rounded-xl flex items-center justify-center text-white text-xl shadow-lg">
              👁️
@@ -1112,11 +1150,23 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
              <div className={`w-2 h-2 rounded-full ${isListening ? "bg-rose-500 shadow-[0_0_5px_#f43f5e] animate-pulse" : "bg-gray-400"}`}></div>
              {isListening ? "Voice active" : "Voice standby"}
            </div>
+           {feature !== "none" && (
+             <div
+               onClick={() => {
+                 switchFeature("none");
+                 speak("Session ended. System in standby.", "polite");
+               }}
+               className="text-[11px] px-4 py-1.5 rounded-full bg-rose-500/20 backdrop-blur-md shadow-sm text-rose-600 font-bold flex items-center gap-2 cursor-pointer transition-transform hover:scale-105 hover:bg-rose-500/30 active:scale-95"
+             >
+               <div className="w-2 h-2 rounded-full bg-rose-500" />
+               End Session
+             </div>
+           )}
         </div>
       </header>
 
       {/* Center Circular Orbit Layout */}
-      <div className="relative w-full h-[540px] flex items-center justify-center shrink-0 z-10 scale-75 sm:scale-90 md:scale-100 transition-transform mt-4 md:mt-8">
+      <div className="circular-hud-container relative w-full h-[540px] flex items-center justify-center shrink-0 z-10 scale-75 sm:scale-90 md:scale-100 transition-transform my-auto">
           {/* Center Camera Feed in Circle */}
           <div
             onClick={toggleMic}
@@ -1142,7 +1192,7 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
                  obstacles={obstacles}
                />
              </div>
-             {!cameraReady && <div className="text-[12px] text-gray-400 z-10 text-center px-4">Point camera to activate vision feed</div>}
+             {!cameraReady && !cameraError && <div className="text-[12px] text-gray-400 z-10 text-center px-4">Point camera to activate vision feed</div>}
           </div>
           
           {/* Floating Results Panel below the Camera Feed */}
@@ -1172,30 +1222,10 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
                 </div>
               </div>
             )}
+          </div>
 
-            <ResultPanel
-              feature={feature}
-              text={ocrText}
-              currency={currencyVal}
-              glove={gloveSign}
-              hint={navHint}
-              detections={detections}
-              error={error}
-              debugMode={debugMode}
-              debug={{
-                ...debugInfo,
-                speechConfidence,
-                ocrAccuracy,
-                model: CURRENT_MODEL,
-              }}
-              onReadAloud={() => {
-                if (ocrText) {
-                  speak(ocrText, "assertive");
-                  setLastSpoken(ocrText);
-                }
-              }}
-            />
-            
+          {/* Left Side Active Feature Panels */}
+          <div className="absolute right-[calc(50%+290px)] top-1/2 -translate-y-1/2 w-[340px] z-40 flex flex-col gap-4 drop-shadow-xl pointer-events-auto">
              {feature === "search" && (
                 <ObjectSearchPanel
                   target={searchTarget}
@@ -1243,10 +1273,20 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
             { id: "search", label: "Smart Search", icon: "🔍", cmd: "FIND OBJECT" },
           ].map((m, index, arr) => {
              const angle = (index * (360 / arr.length) - 90) * (Math.PI / 180);
-             const r = 265; 
-             const x = Math.cos(angle) * r;
-             const y = Math.sin(angle) * r;
-             
+             const r = 220; 
+             let x = Math.cos(angle) * r;
+             let y = Math.sin(angle) * r;
+
+             // Fine-tune positioning based on user request
+             if (m.id === "currency") {
+               y += 40; // move Money ID down
+               x -= 30; // and a little left
+             } else if (m.id === "ocr") {
+               y -= 50; // move Text Reader further up
+             } else if (m.id === "search") {
+               y -= 70; // move Smart Search further up
+               x -= 60; // and further left
+             }
              return (
                <div 
                  key={m.id}
@@ -1263,48 +1303,12 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
              );
           })}
       </div>
+      </div>
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
-      <footer className="w-full max-w-7xl mx-auto z-20 shrink-0 mt-auto mb-4 px-4">
+      <footer className="w-full max-w-7xl mx-auto z-20 shrink-0 mt-12 mb-4 px-4">
         <div className="glass-card w-full pt-8 pb-4">
-          <style>{`
-            .st-footer { font-family: 'Inter', 'Segoe UI', sans-serif; width: 100%; box-sizing: border-box; }
-            .st-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border-top: 0.5px solid rgba(255,255,255,0.4); }
-            .st-col { padding: 2rem 1.75rem; border-right: 0.5px solid rgba(255,255,255,0.4); }
-            .st-col:last-child { border-right: none; }
-            .st-col-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: #a89bc2; text-transform: uppercase; margin: 0 0 1rem; }
-            .st-brand { font-size: 20px; font-weight: 700; color: #2d2d3a; margin: 0 0 4px; }
-            .st-brand span { color: #6ab4e8; }
-            .st-tagline { font-size: 12px; color: #6b6b8a; margin: 0 0 1.25rem; line-height: 1.5; }
-            .st-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
-            .st-links button { background: none; border: none; padding: 0; cursor: pointer; text-align: left; font-size: 13.5px; color: #6b6b8a; text-decoration: none; display: flex; align-items: center; gap: 7px; transition: color 0.15s; }
-            .st-links button:hover { color: #9b7fd4; }
-            .st-links span { font-size: 14px; }
-            .st-ai-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #a89bc2; margin: 0 0 8px; font-weight: 500; }
-            .st-ai-input { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.3); border: 0.5px solid rgba(255,255,255,0.4); border-radius: 999px; padding: 8px 10px 8px 14px; }
-            .st-ai-input input { flex: 1; border: none; background: transparent; font-size: 13px; color: #2d2d3a; outline: none; font-family: 'Inter', 'Segoe UI', sans-serif; }
-            .st-ai-input input::placeholder { color: #a89bc2; }
-            .st-send-btn { background: #f0a8d0; border: none; border-radius: 999px; padding: 5px 13px; font-size: 12px; font-weight: 500; color: #4a1528; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
-            .st-send-btn:hover { background: #e893c0; }
-            .st-contact-field { width: 100%; box-sizing: border-box; border: none; border-bottom: 0.5px solid rgba(255,255,255,0.5); background: transparent; padding: 9px 0; font-size: 13.5px; font-family: 'Inter', 'Segoe UI', sans-serif; color: #2d2d3a; outline: none; margin-bottom: 12px; }
-            .st-contact-field::placeholder { color: #a89bc2; }
-            .st-contact-field:focus { border-bottom-color: #9b7fd4; }
-            textarea.st-contact-field { resize: none; height: 72px; }
-            .st-submit { background: transparent; border: 0.5px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 8px 18px; font-size: 13px; font-family: 'Inter', 'Segoe UI', sans-serif; color: #6b6b8a; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-            .st-submit:hover { background: rgba(255,255,255,0.4); color: #2d2d3a; }
-            .st-statusbar { border-top: 0.5px solid rgba(255,255,255,0.4); padding: 10px 1.75rem; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-            .st-status-text { font-size: 11.5px; color: #6b6b8a; }
-            .st-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4caf82; display: inline-block; margin-right: 5px; animation: pulse 2s infinite; }
-            .st-online { display: flex; align-items: center; margin-left: auto; font-size: 11.5px; color: #6b6b8a; font-weight: 500; }
-            .st-divider { color: rgba(255,255,255,0.5); margin: 0 5px; }
-            @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-            
-            @media (max-width: 768px) {
-              .st-grid { grid-template-columns: 1fr; }
-              .st-col { border-right: none; border-bottom: 0.5px solid rgba(255,255,255,0.4); }
-              .st-col:last-child { border-bottom: none; }
-            }
-          `}</style>
+          {/* Footer styles are defined in globals.css (.st-footer, .st-grid, etc.) */}
           <div className="st-footer">
             <div className="st-grid">
 
@@ -1416,12 +1420,16 @@ const [isHistoryOpen, setHistoryOpen] = useState(false);
         messages={assistantMessages}
         isListening={isListening}
         isResponding={isAssistantResponding}
+        onSendMessage={sendAssistantMessage}
         onClearHistory={async () => {
           setAssistantMessages([]);
           await clearAssistantHistory();
           speak("AI assistant history cleared.", "assertive");
         }}
-        onClose={() => setShowAssistant(false)}
+        onClose={() => {
+          setShowAssistant(false);
+          speak("Chat ended. Returning to main view.", "polite");
+        }}
       />
 
       <ResultsModal

@@ -20,8 +20,6 @@ export default function SettingsPanel({
     onSettingChange('cameraFacing', mode as AccessAISettings['cameraFacing']);
   };
 
-  if (!isOpen) return null;
-
   // Focus trap: focus first control on open
   const firstRef = React.useRef<HTMLDivElement>(null);
   React.useEffect(() => {
@@ -30,6 +28,8 @@ export default function SettingsPanel({
       focusable?.focus();
     }
   }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-y-0 left-0 w-full sm:w-[400px] bg-slate-950/90 backdrop-blur-2xl border-r border-white/10 z-[80] shadow-2xl flex flex-col animate-slide-in-left">

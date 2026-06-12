@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Contact {
@@ -23,7 +24,7 @@ export default function EmergencyOverlay({
   gpsCoords,
   contacts,
 }: EmergencyOverlayProps) {
-  // Beep sound alert synthesized on each second change
+  // ── Beep alert synthesized on each second change ──────────────────────────
   useEffect(() => {
     if (show && timer > 0) {
       try {
@@ -33,7 +34,7 @@ export default function EmergencyOverlay({
           const osc = audioCtx.createOscillator();
           const gain = audioCtx.createGain();
           osc.type = "sine";
-          osc.frequency.setValueAtTime(988, audioCtx.currentTime); // B5 note - urgent
+          osc.frequency.setValueAtTime(988, audioCtx.currentTime); // B5 — urgent tone
           gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
           osc.connect(gain);
@@ -57,7 +58,7 @@ export default function EmergencyOverlay({
           className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-red-950/98 backdrop-blur-2xl text-white p-6 text-center overflow-y-auto"
         >
           {/* Pulse backdrop circle */}
-          <div className="absolute w-[80vw] h-[80vw] max-w-[500px] max-h-[500px] bg-red-600/15 blur-[100px] rounded-full animate-pulse pointer-events-none"></div>
+          <div className="absolute w-[80vw] h-[80vw] max-w-[500px] max-h-[500px] bg-red-600/15 blur-[100px] rounded-full animate-pulse pointer-events-none" />
 
           <motion.div
             initial={{ scale: 0.94, y: 20 }}
@@ -72,14 +73,12 @@ export default function EmergencyOverlay({
 
             {/* Countdown and Location section */}
             <div className="flex flex-col md:flex-row gap-6 items-center justify-center w-full mt-2">
-              {/* Huge Countdown Display */}
+              {/* Countdown Display */}
               <div className="relative w-40 h-40 flex items-center justify-center rounded-full border-8 border-red-500 bg-red-900/40 shadow-[0_0_40px_rgba(239,68,68,0.5)] flex-shrink-0">
-                <span className="text-6xl font-black font-mono text-red-100">
-                  {timer}
-                </span>
+                <span className="text-6xl font-black font-mono text-red-100">{timer}</span>
               </div>
 
-              {/* GPS status and info */}
+              {/* GPS status */}
               <div className="bg-white/10 border border-white/10 rounded-2xl p-4 text-left max-w-sm w-full">
                 <span className="text-[9px] font-black text-red-300 uppercase tracking-widest block mb-1">
                   Broadcasting Coordinates
@@ -151,5 +150,3 @@ export default function EmergencyOverlay({
     </AnimatePresence>
   );
 }
-
-import { useEffect } from "react";

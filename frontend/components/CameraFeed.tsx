@@ -23,6 +23,7 @@ interface Props {
   show: boolean;
   detections?: Detection[];
   obstacles?: Obstacle[];
+  hideLiveBadge?: boolean;
 }
 
 export default function CameraFeed({
@@ -32,6 +33,7 @@ export default function CameraFeed({
   show,
   detections,
   obstacles,
+  hideLiveBadge = false,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -169,7 +171,7 @@ export default function CameraFeed({
       )}
 
       {/* Live badge */}
-      {isReady && (
+      {isReady && !hideLiveBadge && (
         <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/50 backdrop-blur px-3 py-1 rounded-full z-20">
           <span className="w-2 h-2 rounded-full bg-brand-danger animate-pulse" />
           <span className="text-xs font-bold text-white tracking-widest">LIVE</span>

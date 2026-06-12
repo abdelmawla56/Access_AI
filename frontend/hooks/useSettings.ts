@@ -43,6 +43,7 @@ export function useSettings() {
             ? parsed.cameraFacing
             : DEFAULTS.cameraFacing,
       };
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSettings(validated);
     } catch (e) {
       console.warn("[useSettings] Failed to parse stored settings", e);

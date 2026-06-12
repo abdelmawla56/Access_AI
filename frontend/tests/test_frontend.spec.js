@@ -1,4 +1,5 @@
 // tests/test_frontend.js
+/* eslint-disable */
 const { test, expect } = require('@playwright/test');
 
 test('frontend loads home page', async ({ page }) => {

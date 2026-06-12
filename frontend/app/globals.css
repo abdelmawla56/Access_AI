@@ -1,8 +1,55 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  /* Fonts */
+  --font-sans: "Outfit", "system-ui", "sans-serif";
+  --font-mono: "JetBrains Mono", "monospace";
+
+  /* Brand Colors */
+  --color-brand-dark: #f5f7fb;
+  --color-brand-obsidian: #ffffff;
+  --color-brand-deep: #ffffff;
+  --color-brand-surface: rgba(255, 255, 255, 0.7);
+  --color-brand-card: rgba(255, 255, 255, 0.5);
+  --color-brand-glass: rgba(255, 255, 255, 0.6);
+  --color-brand-glass-hover: rgba(255, 255, 255, 0.9);
+  --color-brand-border: rgba(148, 163, 184, 0.18);
+  --color-brand-border-glow: rgba(167, 139, 250, 0.2);
+
+  --color-brand-accent: #a78bfa;
+  --color-brand-accent-hover: #8b5cf6;
+  --color-brand-accent-dim: #c4b5fd;
+  --color-brand-cyan: #7dd3fc;
+  --color-brand-pink: #f9a8d4;
+  --color-brand-emerald: #6ee7b7;
+  --color-brand-success: #34d399;
+  --color-brand-warning: #fbbf24;
+  --color-brand-danger: #fda4af;
+
+  --color-brand-text: #111827;
+  --color-brand-muted: #6b7280;
+  --color-brand-subtle: #9ca3af;
+
+  /* Custom Border Radius */
+  --radius-2xl: 16px;
+  --radius-3xl: 24px;
+  --radius-4xl: 32px;
+
+  /* Custom Animations mapped to @keyframes */
+  --animate-float: float 5s ease-in-out infinite;
+  --animate-float-slow: float 7s ease-in-out infinite;
+  --animate-float-fast: float 4s ease-in-out infinite;
+  --animate-rise-in: rise-in 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  --animate-mercury-pulse: mercury-pulse 3s ease-in-out infinite;
+  --animate-mercury-active: mercury-pulse-active 1.8s ease-in-out infinite;
+  --animate-holo-breathe: holo-breathe 3s ease-in-out infinite;
+  --animate-ripple-out: ripple-out 1.8s ease-out infinite;
+  --animate-spin-fast: spin 0.8s linear infinite;
+  --animate-glow-pulse: glow-pulse 2s ease-in-out infinite;
+  --animate-orb-drift: orb-drift 20s ease-in-out infinite alternate;
+  --animate-badge-in: badge-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  --animate-mesh-rotate: mesh-rotate 720s linear infinite;
+}
 
 /* ─── Design Tokens ─────────────────────────────────────────────────────────── */
 :root {
@@ -349,3 +396,58 @@ body {
 .animate-ripple-out { animation: ripple-out 1.8s ease-out infinite; }
 .animate-spin-fast  { animation: spin 0.8s linear infinite; }
 .animate-glow-pulse { animation: glow-pulse 2s ease-in-out infinite; }
+.animate-fade-in    { animation: fade-in 0.25s ease forwards; }
+.animate-slide-in   { animation: slide-in-right 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.animate-slide-in-left { animation: slide-in-left 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ─── Footer Layout (Symbio Tech) ───────────────────────────────────────────── */
+.st-footer { font-family: 'Inter', 'Segoe UI', sans-serif; width: 100%; box-sizing: border-box; }
+.st-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; border-top: 0.5px solid rgba(255,255,255,0.4); }
+.st-col { padding: 2rem 1.75rem; border-right: 0.5px solid rgba(255,255,255,0.4); }
+.st-col:last-child { border-right: none; }
+.st-col-label { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; color: #a89bc2; text-transform: uppercase; margin: 0 0 1rem; }
+.st-brand { font-size: 20px; font-weight: 700; color: #2d2d3a; margin: 0 0 4px; }
+.st-brand span { color: #6ab4e8; }
+.st-tagline { font-size: 12px; color: #6b6b8a; margin: 0 0 1.25rem; line-height: 1.5; }
+.st-links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.st-links button { background: none; border: none; padding: 0; cursor: pointer; text-align: left; font-size: 13.5px; color: #6b6b8a; text-decoration: none; display: flex; align-items: center; gap: 7px; transition: color 0.15s; }
+.st-links button:hover { color: #9b7fd4; }
+.st-links span { font-size: 14px; }
+.st-ai-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #a89bc2; margin: 0 0 8px; font-weight: 500; }
+.st-ai-input { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.3); border: 0.5px solid rgba(255,255,255,0.4); border-radius: 999px; padding: 8px 10px 8px 14px; }
+.st-ai-input input { flex: 1; border: none; background: transparent; font-size: 13px; color: #2d2d3a; outline: none; font-family: 'Inter', 'Segoe UI', sans-serif; }
+.st-ai-input input::placeholder { color: #a89bc2; }
+.st-send-btn { background: #f0a8d0; border: none; border-radius: 999px; padding: 5px 13px; font-size: 12px; font-weight: 500; color: #4a1528; cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.st-send-btn:hover { background: #e893c0; }
+.st-contact-field { width: 100%; box-sizing: border-box; border: none; border-bottom: 0.5px solid rgba(255,255,255,0.5); background: transparent; padding: 9px 0; font-size: 13.5px; font-family: 'Inter', 'Segoe UI', sans-serif; color: #2d2d3a; outline: none; margin-bottom: 12px; }
+.st-contact-field::placeholder { color: #a89bc2; }
+.st-contact-field:focus { border-bottom-color: #9b7fd4; }
+textarea.st-contact-field { resize: none; height: 72px; }
+.st-submit { background: transparent; border: 0.5px solid rgba(255,255,255,0.5); border-radius: 8px; padding: 8px 18px; font-size: 13px; font-family: 'Inter', 'Segoe UI', sans-serif; color: #6b6b8a; cursor: pointer; display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.st-submit:hover { background: rgba(255,255,255,0.4); color: #2d2d3a; }
+.st-statusbar { border-top: 0.5px solid rgba(255,255,255,0.4); padding: 10px 1.75rem; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.st-status-text { font-size: 11.5px; color: #6b6b8a; }
+.st-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4caf82; display: inline-block; margin-right: 5px; animation: pulse 2s infinite; }
+.st-online { display: flex; align-items: center; margin-left: auto; font-size: 11.5px; color: #6b6b8a; font-weight: 500; }
+.st-divider { color: rgba(255,255,255,0.5); margin: 0 5px; }
+
+@media (max-width: 768px) {
+  .st-grid { grid-template-columns: 1fr; }
+  .st-col { border-right: none; border-bottom: 0.5px solid rgba(255,255,255,0.4); }
+  .st-col:last-child { border-bottom: none; }
+}
